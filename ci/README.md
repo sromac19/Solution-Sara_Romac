@@ -1,41 +1,66 @@
 # CI konfiguracija
 
-Ovaj folder dokumentira CI/CD pristup korišten u projektu.
+Ovaj direktorij dokumentira CI/CD pristup korišten u projektu.
 
-## Zašto stvarna workflow definicija nije fizički ovdje
+## Zašto se workflow ne nalazi u ovom direktoriju?
 
-GitHub Actions **zahtijeva** da workflow YAML fajlovi budu na točno određenoj
-putanji u repozitoriju: `.github/workflows/*.yml`. To je platformsko
-ograničenje GitHuba, ne odluka projekta - GitHub jednostavno ne prepoznaje
-workflow fajlove postavljene bilo gdje drugdje (uključujući ovaj `ci/` folder).
+GitHub Actions prepoznaje workflow datoteke isključivo ako se nalaze na sljedećoj putanji:
 
-Stvarna definicija pipeline-a nalazi se u:
-[`/.github/workflows/ci.yml`](../.github/workflows/ci.yml)
+```text
+.github/workflows/*.yml
+```
 
-## Što pipeline radi
+To je ograničenje GitHub platforme, a ne odluka projekta. Workflow datoteke smještene na drugim lokacijama (uključujući ovaj `ci/` direktorij) GitHub neće izvršavati.
 
-Na svaki `push` i `pull_request` prema `main` grani, pipeline izvršava:
+Stvarna definicija CI pipelinea nalazi se u:
 
-1. **Checkout koda**
-2. **Postavljanje Python 3.11** okruženja (uz pip cache za brže buildove)
-3. **Instalacija dependency-ja** (`pip install -e ".[dev]"`)
-4. **Lint** - `ruff check src tests`
-5. **Provjera Alembic migracija** - `alembic upgrade head` na čistoj SQLite bazi
-   (potvrđuje da migracije stvarno rade, ne samo da postoje)
-6. **Testovi** - `pytest --cov=tickethub --cov-report=term-missing`
-7. **Docker build** - potvrđuje da se produkcijski image uspješno gradi
+```text
+.github/workflows/ci.yml
+```
 
-Ako bilo koji korak padne, pipeline se prekida (fail-fast) i status na
-GitHubu postaje crven - sprječava merge/deploy koda koji ne prolazi
-osnovne provjere kvalitete.
+## Što CI pipeline radi?
 
-## Lokalno pokretanje istih provjera
+Na svaki `push` i `pull_request` prema grani `main` izvršavaju se sljedeći koraci:
 
-Sve što CI radi možeš pokrenuti i lokalno prije push-a, preko Makefile-a:
+1. Checkout izvornog koda.
+2. Postavljanje Python 3.11 okruženja uz `pip` cache radi brže instalacije paketa.
+3. Instalacija svih ovisnosti:
+
+   ```bash
+   pip install -e ".[dev]"
+   ```
+
+4. Pokretanje lint provjere:
+
+   ```bash
+   ruff check src tests
+   ```
+
+5. Provjera Alembic migracija izvršavanjem:
+
+   ```bash
+   alembic upgrade head
+   ```
+
+   na čistoj SQLite bazi kako bi se potvrdilo da su migracije ispravne i primjenjive.
+
+6. Pokretanje testova uz mjerenje pokrivenosti:
+
+   ```bash
+   pytest --cov=tickethub --cov-report=term-missing
+   ```
+
+7. Izgradnja Docker slike kako bi se potvrdilo da se produkcijski image može uspješno izgraditi.
+
+Ako bilo koji od navedenih koraka ne uspije, pipeline se odmah prekida (fail-fast), a GitHub označava izvršavanje kao neuspješno. Time se sprječava spajanje ili implementacija koda koji ne prolazi osnovne provjere kvalitete.
+
+## Pokretanje provjera lokalno
+
+Sve provjere koje se izvršavaju u CI pipelineu moguće je pokrenuti i lokalno pomoću `Makefile` naredbi:
 
 ```bash
-make lint        # korak 4
-make migrate      # korak 5
-make test-cov      # korak 6
-make docker-build  # korak 7
+make lint          # lint provjera
+make migrate       # provjera migracija
+make test-cov      # testovi s pokrivenošću
+make docker-build  # Docker build
 ```
