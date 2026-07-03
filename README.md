@@ -1,5 +1,8 @@
 # TicketHub
 
+> **Napomena:** repozitorij je nazvan `solution-sara_romac` jer GitHub ne dopušta znak `/` u nazivu
+> repozitorija (traženi format iz zadatka bio je `solution/<ime_prezime>`).
+
 Middleware REST servis koji dohvaća "support tickete" iz [DummyJSON](https://dummyjson.com/todos)
 (javni testni izvor), transformira ih u vlastiti `Ticket` model, pohranjuje ih u lokalnu bazu i
 izlaže preko REST API-ja s punom CRUD funkcionalnošću, filtriranjem, pretragom, statistikom i
@@ -46,7 +49,7 @@ Napravljeno kao stručni zadatak za Python Developer poziciju.
 ```
 src/tickethub/
 ├── api/            # FastAPI routeri - tanki sloj (parsiranje requesta, poziv servisa)
-├── core/           # config, logging, background job, in-memory cache
+├── core/           # config, logging, JWT security, rate limiting, cache (Redis/in-memory), background job
 ├── db/             # async SQLAlchemy engine/session
 ├── models/         # ORM modeli (SQLAlchemy)
 ├── schemas/        # Pydantic sheme (API ugovor - odvojeno od ORM modela)
@@ -139,7 +142,8 @@ make docker-up
 Ovo pokreće tri servisa:
 - **api** - TicketHub aplikacija (port `8000`), automatski primjenjuje migracije pri startu
 - **db** - PostgreSQL 16 (port `5432`)
-- **redis** - dostupan za buduće caching potrebe (port `6379`)
+- **redis** - backend za `/stats` cache (port `6379`); aplikacija automatski koristi Redis kad je
+  `REDIS_URL` postavljen (vidi `core/cache.py`)
 
 Zaustavljanje: `make docker-down`
 
