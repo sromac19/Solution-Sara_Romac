@@ -1,23 +1,44 @@
 # TicketHub
 
-Middleware REST servis koji dohvaća "support tickete" iz vanjskog izvora [DummyJSON](https://dummyjson.com/todos), transformira ih u vlastiti `Ticket` model, pohranjuje u lokalnu bazu i izlaže putem REST API-ja.
+> **Napomena:** repozitorij je nazvan `solution-sara_romac` jer GitHub ne dopušta znak `/` u nazivu repozitorija (traženi format iz zadatka bio je `solution/<ime_prezime>`).
 
-Projekt je izrađen kao stručni zadatak za Python Developer poziciju.
+Middleware REST servis koji dohvaća "support tickete" iz DummyJSON (javni testni izvor), transformira ih u vlastiti Ticket model, pohranjuje u lokalnu bazu i izlaže preko REST API-ja s CRUD funkcionalnošću, filtriranjem, pretragom, statistikama i periodičkom sinkronizacijom.
+
+Napravljeno kao stručni zadatak za Python Developer poziciju.
+
+---
+
+## Sadržaj
+
+- Tehnološki stack  
+- Arhitektura i ključne odluke  
+- Pokretanje - lokalno  
+- Pokretanje - Docker Compose  
+- Konfiguracija (env varijable)  
+- API endpointi  
+- Testovi  
+- Migracije baze (Alembic)  
+- Statička API dokumentacija  
+- Struktura projekta  
+- Korištenje AI alata  
 
 ---
 
 ## Tehnološki stack
 
-| Tehnologija | Uloga |
-|---|---|
-| Python 3.11 | async/await, typing |
-| FastAPI | REST API |
-| httpx | async HTTP klijent |
-| Pydantic | validacija |
-| SQLAlchemy 2.x | async ORM |
-| Alembic | migracije |
-| pytest | testovi |
-| ruff | lint |
+| Tehnologija | Verzija | Uloga |
+|---|---|---|
+| Python | 3.11 | async/await, moderni type hints |
+| FastAPI | 0.111 | REST API + OpenAPI |
+| httpx | 0.27 | Async HTTP klijent prema DummyJSON-u |
+| Pydantic | 2.7 | Validacija |
+| SQLAlchemy | 2.0 | Async ORM |
+| Alembic | latest | Migracije baze |
+| pytest | latest | Unit + integracijski testovi |
+| ruff | latest | Linting |
+| python-jose | 3.3 | JWT autentifikacija |
+| slowapi | 0.1 | Rate limiting |
+| redis | 5.0 | Cache (optional fallback in-memory) |
 
 ---
 
@@ -25,38 +46,57 @@ Projekt je izrađen kao stručni zadatak za Python Developer poziciju.
 
 ```
 src/tickethub/
-├── api/        # FastAPI routeri
+├── api/        # FastAPI routeri (HTTP sloj)
 ├── core/       # config, logging, security, cache
-├── db/         # engine i session
-├── models/     # SQLAlchemy modeli
+├── db/         # DB engine i session
+├── models/     # ORM modeli
 ├── schemas/    # Pydantic sheme
-└── services/   # poslovna logika
+└── services/   # business logika
 ```
 
+---
+
 ### Razdvajanje ORM i Pydantic modela
-ORM modeli opisuju bazu, dok Pydantic sheme definiraju API ugovor. Ovo omogućuje neovisne promjene baze i API-ja.
+ORM modeli definiraju bazu, a Pydantic sheme API ugovor.  
+To omogućuje neovisne promjene baze i API sloja.
 
-### Repository/service sloj
-SQL logika je izolirana u service/repository sloju kako bi routeri ostali čisti i fokusirani samo na HTTP sloj.
+---
 
-### Sinkronizacija podataka
-DummyJSON se koristi kao izvor podataka. Pri sync-u se koristi upsert po `source_id` kako bi se izbjegli duplikati pri ponovnom dohvaćanju podataka.
+### Repository sloj
+SQL logika je izolirana u service/repository sloju.  
+Routeri ne sadrže SQL upite nego samo pozivaju servis funkcije.
+
+---
+
+### Sync logika
+DummyJSON se koristi kao vanjski izvor.  
+Pri sync-u se koristi upsert po `source_id` kako bi se izbjegli duplikati.
+
+---
 
 ### Background sync
-Sinkronizacija se pokreće automatski pri startu aplikacije (FastAPI lifespan event), te se može ručno okinuti putem `POST /sync`.
+Sinkronizacija se pokreće automatski pri startu aplikacije (FastAPI lifespan event),  
+te se može ručno pokrenuti putem `POST /sync`.
+
+---
 
 ### Autentifikacija
-`POST /auth/login` koristi DummyJSON za provjeru korisnika, a aplikacija zatim izdaje vlastiti JWT token kako bi kontrolirala autorizaciju unutar sustava.
+`POST /auth/login` koristi DummyJSON za provjeru korisnika,  
+a aplikacija izdaje vlastiti JWT token za autorizaciju.
+
+---
 
 ### Cache
-Cache sloj koristi Redis ako je dostupan (`REDIS_URL`), inače fallback na in-memory implementaciju.
+Cache koristi Redis ako je dostupan (`REDIS_URL`),  
+inače fallback na in-memory implementaciju.
 
 ---
 
 ## API endpointi
 
 ### Auth
-- POST `/auth/login` – login (DummyJSON proxy + JWT)
+
+- POST `/auth/login` – login (DummyJSON + JWT)
 
 Demo:
 ```
@@ -67,20 +107,23 @@ password: emilyspass
 ---
 
 ### Read
+
 - GET `/tickets`
 - GET `/tickets/{id}`
 - GET `/tickets?status=&priority=`
-- GET `/tickets/search?q=`
+- GET `/tickets/search?q=...`
 
 ---
 
 ### Write
+
 - POST `/tickets`
 - PATCH `/tickets/{id}`
 
 ---
 
 ### System
+
 - GET `/health`
 - GET `/stats`
 - POST `/sync`
@@ -90,10 +133,11 @@ password: emilyspass
 ## Testovi
 
 Testovi su podijeljeni na:
+
 - unit testove (logika + cache)
 - integracijske testove (FastAPI + SQLite in-memory)
 
-⚠️ Svi DummyJSON pozivi su mockani (`respx`), bez vanjskih API poziva u testovima.
+⚠️ Svi DummyJSON pozivi su mockani (`respx`), bez vanjskih API poziva.
 
 ```bash
 make test
@@ -132,7 +176,7 @@ make docker-up
 Servisi:
 - API (FastAPI)
 - PostgreSQL
-- Redis (cache opcionalno)
+- Redis (optional cache)
 
 ---
 
@@ -151,8 +195,8 @@ Projekt je razvijen uz pomoć AI alata kao pair-programming asistenta.
 
 AI je korišten za:
 - scaffolding FastAPI strukture
-- implementaciju JWT autentifikacije
-- rate limiting i cache sloj
+- JWT implementaciju
+- rate limiting i cache
 - testove i CI setup
 
 Svi dijelovi su:
@@ -162,12 +206,32 @@ Svi dijelovi su:
 
 ---
 
+## Struktura projekta
+
+```
+tickethub/
+├── src/tickethub/
+├── tests/
+├── alembic/
+├── scripts/
+├── docs/
+├── ci/
+├── .github/workflows/
+├── Dockerfile
+├── docker-compose.yml
+├── Makefile
+├── pyproject.toml
+└── .env.example
+```
+
+---
+
 ## Napomena o CI
 
-GitHub Actions workflow mora se nalaziti u:
+GitHub Actions workflow mora biti u:
 
 ```
 .github/workflows/
 ```
 
-Direktorij `ci/` služi isključivo za dokumentaciju CI procesa.
+Direktorij `ci/` služi samo za dokumentaciju CI procesa.
