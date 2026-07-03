@@ -1,66 +1,40 @@
 # CI konfiguracija
 
-Ovaj direktorij dokumentira CI/CD pristup korišten u projektu.
+Ovaj direktorij dokumentira CI/CD konfiguraciju korištenu u projektu **TicketHub**.
 
-## Zašto se workflow ne nalazi u ovom direktoriju?
+## Napomena
 
-GitHub Actions prepoznaje workflow datoteke isključivo ako se nalaze na sljedećoj putanji:
-
-```text
-.github/workflows/*.yml
-```
-
-To je ograničenje GitHub platforme, a ne odluka projekta. Workflow datoteke smještene na drugim lokacijama (uključujući ovaj `ci/` direktorij) GitHub neće izvršavati.
-
-Stvarna definicija CI pipelinea nalazi se u:
+GitHub Actions zahtijeva da se workflow datoteke nalaze u `.github/workflows/`.  
+Zbog toga se stvarna CI konfiguracija nalazi u:
 
 ```text
 .github/workflows/ci.yml
 ```
 
-## Što CI pipeline radi?
+Ovaj direktorij (`ci/`) služi isključivo za dokumentaciju CI procesa i eventualne dodatne CI skripte.
 
-Na svaki `push` i `pull_request` prema grani `main` izvršavaju se sljedeći koraci:
+## Što CI workflow radi?
 
-1. Checkout izvornog koda.
-2. Postavljanje Python 3.11 okruženja uz `pip` cache radi brže instalacije paketa.
-3. Instalacija svih ovisnosti:
+Prilikom svakog `push` ili `pull_request` događaja na granu `main`, automatski se izvršavaju sljedeći koraci:
 
-   ```bash
-   pip install -e ".[dev]"
-   ```
+1. Checkout repozitorija
+2. Postavljanje Python 3.11 okruženja (uz pip cache za bržu instalaciju)
+3. Instalacija ovisnosti (`pip install -e ".[dev]"`)
+4. Lint provjera koda (`ruff check src tests`)
+5. Provjera Alembic migracija na čistoj SQLite bazi (`alembic upgrade head`)
+6. Pokretanje testova uz coverage izvještaj (`pytest --cov=tickethub --cov-report=term-missing`)
+7. Docker build za provjeru produkcijskog imagea
 
-4. Pokretanje lint provjere:
+Ako bilo koji korak ne uspije, workflow se prekida (fail-fast), a GitHub označava build kao neuspješan. Time se sprječava merge koda koji ne prolazi osnovne provjere kvalitete.
 
-   ```bash
-   ruff check src tests
-   ```
+## Lokalno pokretanje istih provjera
 
-5. Provjera Alembic migracija izvršavanjem:
-
-   ```bash
-   alembic upgrade head
-   ```
-
-   na čistoj SQLite bazi kako bi se potvrdilo da su migracije ispravne i primjenjive.
-
-6. Pokretanje testova uz mjerenje pokrivenosti:
-
-   ```bash
-   pytest --cov=tickethub --cov-report=term-missing
-   ```
-
-7. Izgradnja Docker slike kako bi se potvrdilo da se produkcijski image može uspješno izgraditi.
-
-Ako bilo koji od navedenih koraka ne uspije, pipeline se odmah prekida (fail-fast), a GitHub označava izvršavanje kao neuspješno. Time se sprječava spajanje ili implementacija koda koji ne prolazi osnovne provjere kvalitete.
-
-## Pokretanje provjera lokalno
-
-Sve provjere koje se izvršavaju u CI pipelineu moguće je pokrenuti i lokalno pomoću `Makefile` naredbi:
+Sve CI provjere mogu se pokrenuti lokalno pomoću Makefile-a:
 
 ```bash
-make lint          # lint provjera
-make migrate       # provjera migracija
-make test-cov      # testovi s pokrivenošću
-make docker-build  # Docker build
+make lint
+make migrate
+make test-cov
+make docker-build
+```
 ```
